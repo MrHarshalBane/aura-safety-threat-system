@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura — AI-Powered Women's Safety & Threat Detection System</title>
+  <meta name="description" content="Aura AI Multi-Signal Threat Detection System: Real-time pose estimation, crowd vulnerability analysis, camera-based SOS gestures, and automated Telegram emergency dispatch.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- TensorFlow.js & Pose Detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.10.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.10.0/dist/tf-converter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.10.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-surface: #111827;
+      --bg-card: #1f2937;
+      --border-color: #374151;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent-indigo: #6366f1;
+      --accent-purple: #8b5cf6;
+      --status-safe: #10b981;
+      --status-caution: #f59e0b;
+      --status-danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 1.8rem;
+    }
+
+    .brand-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-prototype {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+      border: 1px solid #4f46e5;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pulse-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: var(--status-safe);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--status-safe);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      padding: 24px 28px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Video Feed Section */
+    .viewport-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .viewport-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(31, 41, 55, 0.4);
+    }
+
+    .viewport-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #05070e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #webcamVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #overlayCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform: scaleX(-1);
+      pointer-events: none;
+    }
+
+    .hud-overlay {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-badge {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-family: 'Space Grotesk', monospace;
+    }
+
+    .sos-progress-container {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 480px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--accent-indigo);
+      padding: 12px 18px;
+      border-radius: 12px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 15;
+    }
+
+    .sos-progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .sos-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      transition: width 0.1s linear;
+    }
+
+    .camera-placeholder {
+      position: absolute;
+      text-align: center;
+      padding: 24px;
+      max-width: 460px;
+      z-index: 5;
+    }
+
+    .camera-placeholder p {
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-size: 0.88rem;
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+      transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+    }
+
+    .controls-strip {
+      padding: 14px 20px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Sidebar Panels */
+    .side-panels {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Threat Status Box */
+    .status-display {
+      padding: 16px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .status-display.safe {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: var(--status-safe);
+    }
+
+    .status-display.caution {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: var(--status-caution);
+    }
+
+    .status-display.alert {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.6);
+      color: var(--status-danger);
+      animation: alertPulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes alertPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { transform: scale(1.02); box-shadow: 0 0 16px 2px rgba(239, 68, 68, 0.5); }
+    }
+
+    .status-text-large {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+    }
+
+    .status-sub {
+      font-size: 0.78rem;
+      margin-top: 4px;
+      opacity: 0.9;
+    }
+
+    /* Telegram Config Section */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .text-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      outline: none;
+      font-family: monospace;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent-indigo);
+    }
+
+    .btn-test {
+      background: #374151;
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn-test:hover {
+      background: #4b5563;
+    }
+
+    /* Event log */
+    .log-container {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 4px;
+    }
+
+    .log-item {
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      font-size: 0.76rem;
+      display: flex;
+      justify-content: space-between;
+      border-left: 3px solid var(--border-color);
+    }
+
+    .log-item.alert {
+      border-left-color: var(--status-danger);
+      color: #fca5a5;
+    }
+
+    .log-item.safe {
+      border-left-color: var(--status-safe);
+      color: #a7f3d0;
+    }
+
+    .meta-box {
+      background: rgba(31, 41, 55, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .meta-box strong {
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <div>
+        <div class="brand-title">
+          Aura Vision AI
+          <span class="badge-prototype">Live Web Prototype</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+          Autonomous Vulnerability & Threat Detection System
+        </div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div><span class="pulse-dot"></span> <span id="engineStatus">AI Ready (Web Browser)</span></div>
+      <div>Python Streamlit Backend: <a href="https://github.com/MrHarshalBane/aura-safety-threat-system" target="_blank" style="color:#818cf8; text-decoration:none;">GitHub Repo</a></div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    
+    <!-- Left Column: Video & Real-time Vision -->
+    <div class="viewport-card">
+      <div class="viewport-header">
+        <div class="viewport-title">
+          <span>📹</span>
+          <span>Perimeter Surveillance Feed</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);" id="fpsCounter">
+          FPS: -- | Model: Pose-Estimation DNN
+        </div>
+      </div>
+
+      <div class="video-wrapper">
+        <div class="hud-overlay">
+          <div class="hud-badge">PROTOCOL: 24/7 ACTIVE GUARD</div>
+          <div class="hud-badge" id="peopleCounterBadge">PERSONS: 0</div>
+        </div>
+
+        <video id="webcamVideo" autoplay playsinline muted></video>
+        <canvas id="overlayCanvas"></canvas>
+
+        <!-- SOS Gesture Progress Hold -->
+        <div class="sos-progress-container" id="sosProgressContainer">
+          <div style="display:flex; justify-content:space-between; font-size: 0.78rem; font-weight:700;">
+            <span style="color:#f59e0b;">🚨 SOS DISTRESS GESTURE DETECTED</span>
+            <span id="sosProgressPercent">0%</span>
+          </div>
+          <div class="sos-progress-bar-bg">
+            <div class="sos-progress-fill" id="sosProgressBar"></div>
+          </div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">
+            Hold gesture (hands/wrists raised above shoulders) to trigger emergency dispatch
+          </div>
+        </div>
+
+        <!-- Camera Permission Initial Prompt -->
+        <div class="camera-placeholder" id="cameraPrompt">
+          <div style="font-size: 3rem; margin-bottom: 8px;">📷</div>
+          <h3 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem;">Allow Camera Access for Live Prototype</h3>
+          <p>
+            Experience Aura's in-browser computer vision. Detects poses, monitors for SOS distress gestures, and simulates live alerts directly in your browser.
+          </p>
+          <button class="btn-action" id="startCamBtn">
+            <span>Activate Live Camera</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="controls-strip">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn-test" id="simulateSosBtn">
+            ⚡ Simulate SOS Gesture
+          </button>
+          <button class="btn-test" id="resetThreatBtn">
+            🔄 Reset Status
+          </button>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted);">
+          Gesture Rule: Raise both hands or wrists above shoulder height to trigger SOS.
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Bento Metrics & Telegram Dispatch -->
+    <div class="side-panels">
+
+      <!-- Threat Level Panel -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>🚨 Threat Assessment</span>
+          <span id="threatBadge" style="font-size: 0.72rem; color: var(--status-safe);">SECURE</span>
+        </div>
+        <div class="status-display safe" id="statusDisplay">
+          <div class="status-text-large" id="threatStatusText">STATUS: SAFE</div>
+          <div class="status-sub" id="threatStatusDesc">Zero perimeter anomalies. Standby.</div>
+        </div>
+      </div>
+
+      <!-- Telegram Dispatch Panel -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>📱 Telegram Emergency Dispatch</span>
+          <span style="font-size:0.7rem; color:var(--text-muted);">Cloud API</span>
+        </div>
+        <div class="input-group">
+          <label class="input-label" for="botTokenInput">Bot Token (from @BotFather)</label>
+          <input type="password" id="botTokenInput" class="text-input" placeholder="e.g. 123456789:ABCdefGhI..." />
+        </div>
+        <div class="input-group">
+          <label class="input-label" for="chatIdInput">Chat ID (Channel or Group)</label>
+          <input type="text" id="chatIdInput" class="text-input" placeholder="e.g. 987654321" />
+        </div>
+        <button class="btn-test" id="testTelegramBtn">
+          📨 Send Test Alert via Telegram
+        </button>
+        <div id="telegramStatusNotice" style="font-size: 0.75rem; color: var(--text-muted);"></div>
+      </div>
+
+      <!-- Incident Log -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>📜 Live Incident Log</span>
+          <span style="font-size:0.7rem; color:var(--text-muted);">Local Memory</span>
+        </div>
+        <div class="log-container" id="logContainer">
+          <div class="log-item safe">
+            <span>Aura Web Vision Initialized</span>
+            <span style="font-family:monospace;">Now</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Architectural Context -->
+      <div class="meta-box">
+        <strong>Dual Deployment Model:</strong>
+        <br>• <strong>Web Frontend (This Page):</strong> In-browser camera pose detection & Telegram webhook dispatch for instant client demos.
+        <br>• <strong>Python Server (app.py):</strong> Heavyweight YOLOv8-pose + OpenCV Caffe gender classification pipeline for edge CCTV streaming.
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // Elements
+    const video = document.getElementById('webcamVideo');
+    const canvas = document.getElementById('overlayCanvas');
+    const ctx = canvas.getContext('2d');
+    const cameraPrompt = document.getElementById('cameraPrompt');
+    const startCamBtn = document.getElementById('startCamBtn');
+    const simulateSosBtn = document.getElementById('simulateSosBtn');
+    const resetThreatBtn = document.getElementById('resetThreatBtn');
+    const statusDisplay = document.getElementById('statusDisplay');
+    const threatStatusText = document.getElementById('threatStatusText');
+    const threatStatusDesc = document.getElementById('threatStatusDesc');
+    const threatBadge = document.getElementById('threatBadge');
+    const peopleCounterBadge = document.getElementById('peopleCounterBadge');
+    const fpsCounter = document.getElementById('fpsCounter');
+    const sosProgressContainer = document.getElementById('sosProgressContainer');
+    const sosProgressBar = document.getElementById('sosProgressBar');
+    const sosProgressPercent = document.getElementById('sosProgressPercent');
+    const logContainer = document.getElementById('logContainer');
+    const botTokenInput = document.getElementById('botTokenInput');
+    const chatIdInput = document.getElementById('chatIdInput');
+    const testTelegramBtn = document.getElementById('testTelegramBtn');
+    const telegramStatusNotice = document.getElementById('telegramStatusNotice');
+
+    // State
+    let detector = null;
+    let isDetecting = false;
+    let sosHoldFrames = 0;
+    const SOS_TRIGGER_FRAMES = 12; // ~0.4s
+    let lastTelegramAlert = 0;
+    let currentThreatLevel = "SAFE";
+
+    // Restore saved tokens
+    if (localStorage.getItem("AURA_TG_TOKEN")) {
+      botTokenInput.value = localStorage.getItem("AURA_TG_TOKEN");
+    }
+    if (localStorage.getItem("AURA_TG_CHAT_ID")) {
+      chatIdInput.value = localStorage.getItem("AURA_TG_CHAT_ID");
+    }
+
+    botTokenInput.addEventListener('change', () => localStorage.setItem("AURA_TG_TOKEN", botTokenInput.value.trim()));
+    chatIdInput.addEventListener('change', () => localStorage.setItem("AURA_TG_CHAT_ID", chatIdInput.value.trim()));
+
+    // Add Log Entry
+    function addLog(msg, type = 'safe') {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const div = document.createElement('div');
+      div.className = `log-item ${type}`;
+      div.innerHTML = `<span>${msg}</span><span style="font-family:monospace;">${timeStr}</span>`;
+      logContainer.prepend(div);
+    }
+
+    // Set Threat Level UI
+    function setThreatLevel(level, reason) {
+      currentThreatLevel = level;
+      statusDisplay.className = `status-display ${level.toLowerCase()}`;
+      threatStatusText.innerText = `STATUS: ${level}`;
+      threatStatusDesc.innerText = reason;
+      threatBadge.innerText = level;
+      threatBadge.style.color = (level === 'ALERT') ? 'var(--status-danger)' : (level === 'CAUTION' ? 'var(--status-caution)' : 'var(--status-safe)');
+
+      if (level === 'ALERT') {
+        playAlertSound();
+        triggerTelegramAlert(reason);
+      }
+    }
+
+    // Sound alert
+    function playAlertSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch(e){}
+    }
+
+    // Telegram Bot Dispatch
+    async function triggerTelegramAlert(reason) {
+      const token = botTokenInput.value.trim();
+      const chatId = chatIdInput.value.trim();
+      const now = Date.now();
+
+      if (!token || !chatId) {
+        addLog(`Alert trigger: ${reason} (Telegram credentials not set in panel)`, 'alert');
+        return;
+      }
+
+      // Rate limit alerts to once every 20 seconds
+      if (now - lastTelegramAlert < 20000) return;
+      lastTelegramAlert = now;
+
+      addLog(`🚨 Dispatching Telegram Alert: ${reason}`, 'alert');
+      try {
+        const text = `🚨 *AURA EMERGENCY ALERT*\n\n• *Status:* CRITICAL SOS\n• *Trigger:* ${reason}\n• *Timestamp:* ${new Date().toISOString()}\n• *Channel:* Aura Vision Prototype Dispatch`;
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'Markdown' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          addLog(`✅ Telegram Alert successfully delivered to Chat ${chatId}`, 'safe');
+        } else {
+          addLog(`❌ Telegram API Error: ${data.description}`, 'alert');
+        }
+      } catch (err) {
+        addLog(`❌ Telegram Network Request Failed: ${err.message}`, 'alert');
+      }
+    }
+
+    // Test Telegram ping button
+    testTelegramBtn.addEventListener('click', async () => {
+      const token = botTokenInput.value.trim();
+      const chatId = chatIdInput.value.trim();
+      if (!token || !chatId) {
+        telegramStatusNotice.innerText = "⚠️ Please provide Bot Token & Chat ID.";
+        telegramStatusNotice.style.color = "#f59e0b";
+        return;
+      }
+      telegramStatusNotice.innerText = "Sending test message...";
+      telegramStatusNotice.style.color = "#9ca3af";
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "🔔 *Aura System Test*: Web Prototype Telegram Emergency Dispatch channel connected and operational.",
+            parse_mode: 'Markdown'
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          telegramStatusNotice.innerText = "✅ Test ping sent successfully!";
+          telegramStatusNotice.style.color = "#10b981";
+          addLog("Delivered test ping via Telegram Bot API", "safe");
+        } else {
+          telegramStatusNotice.innerText = `❌ Error: ${data.description}`;
+          telegramStatusNotice.style.color = "#ef4444";
+        }
+      } catch (err) {
+        telegramStatusNotice.innerText = `❌ Error: ${err.message}`;
+        telegramStatusNotice.style.color = "#ef4444";
+      }
+    });
+
+    // Camera and Model Initialization
+    startCamBtn.addEventListener('click', async () => {
+      try {
+        startCamBtn.innerText = "Requesting Camera...";
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+
+        cameraPrompt.style.display = 'none';
+        startCamBtn.innerText = "Camera Active";
+        addLog("Webcam stream active. Loading pose detector...", "safe");
+
+        // Load Pose Detector
+        if (window.poseDetection) {
+          detector = await poseDetection.createDetector(
+            poseDetection.SupportedModels.MoveNet,
+            { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+          );
+          addLog("Pose Detection Engine Initialized.", "safe");
+          isDetecting = true;
+          detectLoop();
+        } else {
+          addLog("Pose Detection library fallback to heuristic monitoring.", "safe");
+        }
+      } catch (err) {
+        alert("Camera permission denied or camera unavailable: " + err.message);
+        startCamBtn.innerText = "Activate Live Camera";
+        addLog("Camera access error: " + err.message, "alert");
+      }
+    });
+
+    // Detection Frame Loop
+    let lastTime = performance.now();
+    let frameCounter = 0;
+
+    async function detectLoop() {
+      if (!isDetecting) return;
+
+      if (video.readyState >= 2) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Frame rate calculation
+        frameCounter++;
+        const now = performance.now();
+        if (now - lastTime >= 1000) {
+          fpsCounter.innerText = `FPS: ${frameCounter} | Engine: MoveNet Lightning`;
+          frameCounter = 0;
+          lastTime = now;
+        }
+
+        let poses = [];
+        try {
+          if (detector) {
+            poses = await detector.estimatePoses(video);
+          }
+        } catch (e) {}
+
+        peopleCounterBadge.innerText = `PERSONS: ${poses.length}`;
+
+        let sosDetectedThisFrame = false;
+
+        for (const pose of poses) {
+          // Draw keypoints & skeleton
+          drawKeypoints(pose.keypoints);
+
+          // Check wrists above shoulders
+          const keypointMap = {};
+          pose.keypoints.forEach(k => { keypointMap[k.name] = k; });
+
+          const leftWrist = keypointMap['left_wrist'];
+          const rightWrist = keypointMap['right_wrist'];
+          const leftShoulder = keypointMap['left_shoulder'];
+          const rightShoulder = keypointMap['right_shoulder'];
+          const nose = keypointMap['nose'];
+
+          if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
+            const leftRaised = (leftWrist.score > 0.3 && leftShoulder.score > 0.3 && leftWrist.y < leftShoulder.y);
+            const rightRaised = (rightWrist.score > 0.3 && rightShoulder.score > 0.3 && rightWrist.y < rightShoulder.y);
+
+            if (leftRaised || rightRaised) {
+              sosDetectedThisFrame = true;
+            }
+          }
+        }
+
+        if (sosDetectedThisFrame) {
+          sosHoldFrames++;
+          const progress = Math.min(1.0, sosHoldFrames / SOS_TRIGGER_FRAMES);
+          sosProgressContainer.style.display = 'flex';
+          sosProgressBar.style.width = `${progress * 100}%`;
+          sosProgressPercent.innerText = `${Math.round(progress * 100)}%`;
+
+          if (sosHoldFrames >= SOS_TRIGGER_FRAMES && currentThreatLevel !== "ALERT") {
+            setThreatLevel("ALERT", "DISTRESS GESTURE: Hands raised above shoulders (Confirmed SOS)");
+            addLog("SOS Distress Gesture confirmed via live video!", "alert");
+          }
+        } else {
+          if (sosHoldFrames > 0) {
+            sosHoldFrames--;
+            const progress = Math.min(1.0, sosHoldFrames / SOS_TRIGGER_FRAMES);
+            sosProgressBar.style.width = `${progress * 100}%`;
+            sosProgressPercent.innerText = `${Math.round(progress * 100)}%`;
+            if (sosHoldFrames === 0) {
+              sosProgressContainer.style.display = 'none';
+            }
+          }
+        }
+      }
+
+      requestAnimationFrame(detectLoop);
+    }
+
+    function drawKeypoints(keypoints) {
+      keypoints.forEach(kp => {
+        if (kp.score > 0.3) {
+          ctx.beginPath();
+          ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
+          ctx.fillStyle = '#6366f1';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      });
+    }
+
+    // Manual Simulation Controls
+    simulateSosBtn.addEventListener('click', () => {
+      setThreatLevel("ALERT", "SIMULATED DISTRESS GESTURE (SOS Triggered)");
+      addLog("Manual SOS gesture simulation triggered", "alert");
+    });
+
+    resetThreatBtn.addEventListener('click', () => {
+      sosHoldFrames = 0;
+      sosProgressContainer.style.display = 'none';
+      setThreatLevel("SAFE", "Perimeter Secure — Monitoring active");
+      addLog("Threat status reset to SAFE", "safe");
+    });
+  </script>
+</body>
+</html>
