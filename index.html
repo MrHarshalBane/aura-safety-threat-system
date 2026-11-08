@@ -15,17 +15,17 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
   <style>
     :root {
-      --bg-primary: #0b0f19;
-      --bg-surface: #111827;
-      --bg-card: #1f2937;
-      --border-color: #374151;
-      --text-main: #f9fafb;
-      --text-muted: #9ca3af;
-      --accent-indigo: #6366f1;
-      --accent-purple: #8b5cf6;
-      --status-safe: #10b981;
-      --status-caution: #f59e0b;
-      --status-danger: #ef4444;
+      --bg-primary: #ffffff;
+      --bg-surface: #ffffff;
+      --bg-card: #f8fafc;
+      --border-color: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-indigo: #4f46e5;
+      --accent-purple: #7c3aed;
+      --status-safe: #059669;
+      --status-caution: #d97706;
+      --status-danger: #dc2626;
     }
 
     * {
@@ -44,7 +44,7 @@
     }
 
     header {
-      background: rgba(17, 24, 39, 0.85);
+      background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-color);
       padding: 16px 28px;
@@ -77,9 +77,9 @@
     }
 
     .badge-prototype {
-      background: rgba(99, 102, 241, 0.2);
-      color: #a5b4fc;
-      border: 1px solid #4f46e5;
+      background: rgba(79, 70, 229, 0.08);
+      color: #4f46e5;
+      border: 1px solid #c7d2fe;
       font-size: 0.72rem;
       padding: 2px 8px;
       border-radius: 9999px;
@@ -102,7 +102,7 @@
       height: 8px;
       background: var(--status-safe);
       border-radius: 50%;
-      box-shadow: 0 0 8px var(--status-safe);
+      box-shadow: 0 0 8px rgba(5, 150, 105, 0.5);
       animation: pulse 1.8s infinite;
     }
 
@@ -136,7 +136,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     }
 
     .viewport-header {
@@ -145,7 +145,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(31, 41, 55, 0.4);
+      background: #f8fafc;
     }
 
     .viewport-title {
@@ -160,7 +160,7 @@
       position: relative;
       width: 100%;
       aspect-ratio: 16 / 9;
-      background: #05070e;
+      background: #090d16;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -196,9 +196,10 @@
     }
 
     .hud-badge {
-      background: rgba(17, 24, 39, 0.75);
+      background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
       padding: 6px 12px;
       border-radius: 8px;
       font-size: 0.75rem;
@@ -212,7 +213,7 @@
       transform: translateX(-50%);
       width: 80%;
       max-width: 480px;
-      background: rgba(17, 24, 39, 0.9);
+      background: rgba(15, 23, 42, 0.9);
       border: 1px solid var(--accent-indigo);
       padding: 12px 18px;
       border-radius: 12px;
@@ -225,7 +226,7 @@
     .sos-progress-bar-bg {
       width: 100%;
       height: 8px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.15);
       border-radius: 999px;
       overflow: hidden;
     }
@@ -245,8 +246,12 @@
       z-index: 5;
     }
 
+    .camera-placeholder h3 {
+      color: #ffffff;
+    }
+
     .camera-placeholder p {
-      color: var(--text-muted);
+      color: #cbd5e1;
       margin-top: 8px;
       font-size: 0.88rem;
     }
@@ -264,18 +269,18 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.35);
       transition: all 0.2s;
     }
 
     .btn-action:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
     }
 
     .controls-strip {
       padding: 14px 20px;
-      background: var(--bg-surface);
+      background: #f8fafc;
       border-top: 1px solid var(--border-color);
       display: flex;
       flex-wrap: wrap;
@@ -299,6 +304,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
     .panel-title {
@@ -322,27 +328,27 @@
     }
 
     .status-display.safe {
-      background: rgba(16, 185, 129, 0.12);
-      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(5, 150, 105, 0.08);
+      border-color: rgba(5, 150, 105, 0.25);
       color: var(--status-safe);
     }
 
     .status-display.caution {
-      background: rgba(245, 158, 11, 0.12);
-      border-color: rgba(245, 158, 11, 0.4);
+      background: rgba(217, 119, 6, 0.08);
+      border-color: rgba(217, 119, 6, 0.25);
       color: var(--status-caution);
     }
 
     .status-display.alert {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.6);
+      background: rgba(220, 38, 38, 0.08);
+      border-color: rgba(220, 38, 38, 0.35);
       color: var(--status-danger);
       animation: alertPulse 1.2s infinite ease-in-out;
     }
 
     @keyframes alertPulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-      50% { transform: scale(1.02); box-shadow: 0 0 16px 2px rgba(239, 68, 68, 0.5); }
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.2); }
+      50% { transform: scale(1.02); box-shadow: 0 0 16px 2px rgba(220, 38, 38, 0.25); }
     }
 
     .status-text-large {
@@ -371,7 +377,7 @@
     }
 
     .text-input {
-      background: var(--bg-card);
+      background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 8px 12px;
@@ -383,12 +389,13 @@
 
     .text-input:focus {
       border-color: var(--accent-indigo);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
     }
 
     .btn-test {
-      background: #374151;
-      color: #fff;
-      border: none;
+      background: #f1f5f9;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
       padding: 8px 14px;
       border-radius: 6px;
       font-size: 0.8rem;
@@ -398,11 +405,12 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
 
     .btn-test:hover {
-      background: #4b5563;
+      background: #e2e8f0;
+      border-color: #94a3b8;
     }
 
     /* Event log */
@@ -418,25 +426,28 @@
     .log-item {
       padding: 8px 10px;
       border-radius: 6px;
-      background: var(--bg-card);
+      background: #f8fafc;
       font-size: 0.76rem;
       display: flex;
       justify-content: space-between;
       border-left: 3px solid var(--border-color);
+      color: var(--text-main);
     }
 
     .log-item.alert {
       border-left-color: var(--status-danger);
-      color: #fca5a5;
+      background: #fef2f2;
+      color: #991b1b;
     }
 
     .log-item.safe {
       border-left-color: var(--status-safe);
-      color: #a7f3d0;
+      background: #f0fdf4;
+      color: #166534;
     }
 
     .meta-box {
-      background: rgba(31, 41, 55, 0.4);
+      background: #f8fafc;
       border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 10px 14px;
@@ -468,7 +479,7 @@
     </div>
     <div class="header-meta">
       <div><span class="pulse-dot"></span> <span id="engineStatus">AI Ready (Web Browser)</span></div>
-      <div>Python Streamlit Backend: <a href="https://github.com/MrHarshalBane/aura-safety-threat-system" target="_blank" style="color:#818cf8; text-decoration:none;">GitHub Repo</a></div>
+      <div>Python Streamlit Backend: <a href="https://github.com/MrHarshalBane/aura-safety-threat-system" target="_blank" style="color:#4f46e5; text-decoration:none; font-weight:600;">GitHub Repo</a></div>
     </div>
   </header>
 
@@ -500,12 +511,12 @@
         <div class="sos-progress-container" id="sosProgressContainer">
           <div style="display:flex; justify-content:space-between; font-size: 0.78rem; font-weight:700;">
             <span style="color:#f59e0b;">🚨 SOS DISTRESS GESTURE DETECTED</span>
-            <span id="sosProgressPercent">0%</span>
+            <span id="sosProgressPercent" style="color: #ffffff;">0%</span>
           </div>
           <div class="sos-progress-bar-bg">
             <div class="sos-progress-fill" id="sosProgressBar"></div>
           </div>
-          <div style="font-size:0.7rem; color:var(--text-muted);">
+          <div style="font-size:0.7rem; color:#94a3b8;">
             Hold gesture (hands/wrists raised above shoulders) to trigger emergency dispatch
           </div>
         </div>
